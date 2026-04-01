@@ -8,8 +8,8 @@
       "subscription_id": "00000000-0000-0000-0000-000000000000",
       "region": "eastus2",
       "model_deployment": "gpt-4o-mini",
-      "cognitive_services_account": "tmnas-aoai-eastus2",
-      "cognitive_services_rg": "rg-tmnas-aoai-eastus2",
+      "cognitive_services_account": "contoso-aoai-eastus2",
+      "cognitive_services_rg": "rg-contoso-aoai-eastus2",
       "auth_resource": "https://ml.azure.com"
     },
     "test": {
@@ -20,8 +20,8 @@
       "subscription_id": "00000000-0000-0000-0000-000000000000",
       "region": "eastus2",
       "model_deployment": "gpt-4o-mini",
-      "cognitive_services_account": "tmnas-aoai-eastus2",
-      "cognitive_services_rg": "rg-tmnas-aoai-eastus2",
+      "cognitive_services_account": "contoso-aoai-eastus2",
+      "cognitive_services_rg": "rg-contoso-aoai-eastus2",
       "auth_resource": "https://ml.azure.com"
     },
     "prod": {
@@ -31,8 +31,8 @@
       "subscription_id": "00000000-0000-0000-0000-000000000000", 
       "region": "eastus2",
       "model_deployment": "gpt-4o-mini",
-      "cognitive_services_account": "tmnas-aoai-eastus2",
-      "cognitive_services_rg": "rg-tmnas-aoai-eastus2",
+      "cognitive_services_account": "contoso-aoai-eastus2",
+      "cognitive_services_rg": "rg-contoso-aoai-eastus2",
       "auth_resource": "https://ml.azure.com"
     }
   },

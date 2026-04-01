@@ -59,8 +59,8 @@ Source Endpoint: https://YOUR-DEV-RESOURCE.services.ai.azure.com/api/projects/ag
 Target Endpoint: https://YOUR-TEST-RESOURCE.services.ai.azure.com/api/projects/agent-test-project
 
 🔍 Verifying Azure accounts accessibility...
-✅ Source account accessible: tmnas-aoai-eastus2
-✅ Target account accessible: tmnas-aoai-eastus
+✅ Source account accessible: contoso-aoai-eastus2
+✅ Target account accessible: contoso-aoai-eastus
 
 🔐 Getting Azure access token...
 ✅ Azure access token obtained

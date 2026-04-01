@@ -97,8 +97,8 @@ The **promote-agent** workflow and `migrate-agent.ps1` script:
 Environment configuration for fine-tuned model promotion:
 ```json
 {
-  "source_account": "tmnas-aoai-eastus2",
-  "target_account": "tmnas-aoai-eastus", 
+  "source_account": "contoso-aoai-eastus2",
+  "target_account": "contoso-aoai-eastus", 
   "checkpoint_id": "ftchkpt-abc123",
   "model_name": "gpt-35-turbo-fine-tuned"
 }
@@ -110,11 +110,11 @@ Environment configuration for AI agent migration:
 {
   "environments": {
     "dev": {
-      "account_name": "tmnas-aoai-eastus2",
+      "account_name": "contoso-aoai-eastus2",
       "endpoint": "https://YOUR-DEV-RESOURCE.services.ai.azure.com/api/projects/agent-dev-project"
     },
     "test": {
-      "account_name": "tmnas-aoai-eastus", 
+      "account_name": "contoso-aoai-eastus", 
       "endpoint": "https://YOUR-TEST-RESOURCE.services.ai.azure.com/api/projects/agent-test-project"
     }
   }
