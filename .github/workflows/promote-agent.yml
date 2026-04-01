@@ -1,0 +1,234 @@
+name: Promote AI Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_environment:
+        description: 'Source environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      target_environment:
+        description: 'Target environment'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - dev
+          - test
+          - prod
+      agent_name:
+        description: 'Agent name to migrate'
+        required: true
+        type: string
+      create_new_version:
+        description: 'Create new version of agent'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+# Environment variables will be set in job steps
+
+jobs:
+  migrate-agent:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.target_environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate inputs
+      run: |
+        if [ "${{ github.event.inputs.source_environment }}" = "${{ github.event.inputs.target_environment }}" ]; then
+          echo "ERROR: Source and target environments cannot be the same"
+          exit 1
+        fi
+        
+        if [ -z "${{ github.event.inputs.agent_name }}" ]; then
+          echo "ERROR: Agent name cannot be empty"
+          exit 1
+        fi
+        
+        echo "✅ Input validation passed"
+        echo "Source: ${{ github.event.inputs.source_environment }}"
+        echo "Target: ${{ github.event.inputs.target_environment }}"
+        echo "Agent: ${{ github.event.inputs.agent_name }}"
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Load agent migration configuration
+      id: load-config
+      run: |
+        # Load configuration from agent_migration.json (similar to ft_release.json)
+        if [ ! -f "releases/agent_migration.json" ]; then
+          echo "ERROR: releases/agent_migration.json not found"
+          exit 1
+        fi
+        
+        # Extract environment-specific configurations
+        SOURCE_CONFIG=$(jq -r '.environments."${{ github.event.inputs.source_environment }}"' releases/agent_migration.json)
+        TARGET_CONFIG=$(jq -r '.environments."${{ github.event.inputs.target_environment }}"' releases/agent_migration.json)
+        
+        if [ "$SOURCE_CONFIG" = "null" ] || [ "$TARGET_CONFIG" = "null" ]; then
+          echo "ERROR: Environment configuration not found in agent_migration.json"
+          exit 1
+        fi
+        
+        # Extract endpoint and resource details
+        SOURCE_ENDPOINT=$(echo $SOURCE_CONFIG | jq -r '.endpoint')
+        TARGET_ENDPOINT=$(echo $TARGET_CONFIG | jq -r '.endpoint')
+        SOURCE_AI_FOUNDRY=$(echo $SOURCE_CONFIG | jq -r '.ai_foundry_resource_name')
+        TARGET_AI_FOUNDRY=$(echo $TARGET_CONFIG | jq -r '.ai_foundry_resource_name')
+        SOURCE_RG=$(echo $SOURCE_CONFIG | jq -r '.resource_group')
+        TARGET_RG=$(echo $TARGET_CONFIG | jq -r '.resource_group')
+        SOURCE_SUBSCRIPTION=$(echo $SOURCE_CONFIG | jq -r '.subscription_id')
+        TARGET_SUBSCRIPTION=$(echo $TARGET_CONFIG | jq -r '.subscription_id')
+        
+        echo "source_endpoint=$SOURCE_ENDPOINT" >> $GITHUB_OUTPUT
+        echo "target_endpoint=$TARGET_ENDPOINT" >> $GITHUB_OUTPUT
+        echo "source_ai_foundry=$SOURCE_AI_FOUNDRY" >> $GITHUB_OUTPUT
+        echo "target_ai_foundry=$TARGET_AI_FOUNDRY" >> $GITHUB_OUTPUT
+        echo "source_rg=$SOURCE_RG" >> $GITHUB_OUTPUT
+        echo "target_rg=$TARGET_RG" >> $GITHUB_OUTPUT
+        echo "source_subscription=$SOURCE_SUBSCRIPTION" >> $GITHUB_OUTPUT
+        echo "target_subscription=$TARGET_SUBSCRIPTION" >> $GITHUB_OUTPUT
+        
+        echo "✅ Configuration loaded successfully"
+        echo "Source endpoint: $SOURCE_ENDPOINT"
+        echo "Target endpoint: $TARGET_ENDPOINT"
+
+    - name: Verify Azure subscription access
+      run: |
+        # Set source subscription context
+        echo "🔍 Setting source subscription context: ${{ steps.load-config.outputs.source_subscription }}"
+        az account set --subscription "${{ steps.load-config.outputs.source_subscription }}"
+        echo "✅ Source subscription context set"
+        
+        # Verify basic subscription access
+        SOURCE_SUB_INFO=$(az account show --query name -o tsv)
+        echo "Source subscription: $SOURCE_SUB_INFO"
+        
+        # Set target subscription context (may be different)
+        echo "🔍 Setting target subscription context: ${{ steps.load-config.outputs.target_subscription }}"
+        az account set --subscription "${{ steps.load-config.outputs.target_subscription }}"
+        echo "✅ Target subscription context set"
+        
+        # Verify basic subscription access
+        TARGET_SUB_INFO=$(az account show --query name -o tsv)
+        echo "Target subscription: $TARGET_SUB_INFO"
+        
+        # Optional: Try to verify AI Foundry resources (non-blocking)
+        echo "🔍 Attempting to verify AI Foundry resources (optional)..."
+        if az resource show --name "${{ steps.load-config.outputs.source_ai_foundry }}" --resource-group "${{ steps.load-config.outputs.source_rg }}" --resource-type "Microsoft.MachineLearningServices/workspaces" >/dev/null 2>&1; then
+          echo "✅ Source AI Foundry resource found: ${{ steps.load-config.outputs.source_ai_foundry }}"
+        else
+          echo "⚠️  Source AI Foundry resource not found or not accessible: ${{ steps.load-config.outputs.source_ai_foundry }}"
+          echo "   This is not necessarily an error - will verify project access via API instead"
+        fi
+        
+        if az resource show --name "${{ steps.load-config.outputs.target_ai_foundry }}" --resource-group "${{ steps.load-config.outputs.target_rg }}" --resource-type "Microsoft.MachineLearningServices/workspaces" >/dev/null 2>&1; then
+          echo "✅ Target AI Foundry resource found: ${{ steps.load-config.outputs.target_ai_foundry }}"
+        else
+          echo "⚠️  Target AI Foundry resource not found or not accessible: ${{ steps.load-config.outputs.target_ai_foundry }}"
+          echo "   This is not necessarily an error - will verify project access via API instead"
+        fi
+        
+        echo "✅ Subscription access verification completed"
+
+    - name: Install PowerShell
+      run: |
+        echo "🔧 Installing PowerShell..."
+        # Download and install PowerShell
+        wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.0/powershell_7.4.0-1.deb_amd64.deb
+        sudo dpkg -i powershell_7.4.0-1.deb_amd64.deb
+        sudo apt-get install -f -y
+        pwsh --version
+        echo "✅ PowerShell installed successfully"
+
+    - name: Run Portal Agent Migration
+      id: migrate-agent
+      run: |
+        echo "� Starting Portal Agent Migration..."
+        cd scripts
+        
+        # Run the streamlined Portal-only migration script
+        pwsh -File ./migrate-portal-agent.ps1 \
+          -SourceEnvironment "${{ github.event.inputs.source_environment }}" \
+          -TargetEnvironment "${{ github.event.inputs.target_environment }}" \
+          -AgentName "${{ github.event.inputs.agent_name }}" \
+          -CreateNewVersion ${{ github.event.inputs.create_new_version }}
+        
+        # Capture the output variables from the PowerShell script
+        if [ -f "migration_output.txt" ]; then
+          while IFS='=' read -r key value; do
+            if [[ $key == MIGRATED_PORTAL_AGENT_ID ]]; then
+              echo "new_agent_id=$value" >> $GITHUB_OUTPUT
+            elif [[ $key == FINAL_PORTAL_AGENT_NAME ]]; then
+              echo "final_agent_name=$value" >> $GITHUB_OUTPUT
+            elif [[ $key == TARGET_PORTAL_PROJECT ]]; then
+              echo "target_project=$value" >> $GITHUB_OUTPUT
+            fi
+          done < migration_output.txt
+        fi
+        
+        echo "✅ Portal Agent Migration completed"
+
+
+    - name: Validation Summary
+      run: |
+        echo "✅ Portal Agent Migration completed successfully!"
+        echo "Migration handled by PowerShell script with built-in validation"
+        echo "Agent ID: ${{ steps.migrate-agent.outputs.new_agent_id }}"
+        echo "Agent Name: ${{ steps.migrate-agent.outputs.final_agent_name }}"
+
+    - name: Copy migration artifacts
+      run: |
+        echo "📊 Copying migration artifacts from PowerShell script..."
+        # PowerShell script generates its own reports and exports
+        # Copy them to the expected location for upload
+        cd scripts
+        if [ -f "portal_migration_report.md" ]; then
+          cp portal_migration_report.md ../migration_report.md
+          echo "✅ Migration report copied"
+        fi
+        
+        if [ -d "exports" ]; then
+          cp -r exports ../
+          echo "✅ Export files copied"
+        fi
+
+    - name: Upload migration artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: agent-migration-artifacts-${{ github.run_number }}
+        path: |
+          exports/
+          migration_report.md
+        retention-days: 30
+
+    - name: Summary
+      run: |
+        echo "🎉 Portal Agent migration completed successfully!"
+        echo ""
+        echo "📋 Migration Summary:"
+        echo "  Source: ${{ github.event.inputs.source_environment }} → Target: ${{ github.event.inputs.target_environment }}"
+        echo "  Agent: ${{ github.event.inputs.agent_name }} → ${{ steps.migrate-agent.outputs.final_agent_name }}"
+        echo "  New Agent ID: ${{ steps.migrate-agent.outputs.new_agent_id }}"
+        echo "  Target Project: ${{ steps.migrate-agent.outputs.target_project }}"
+        echo ""
+        echo "✅ The Portal agent has been successfully migrated and is visible in AI Foundry portal."
+        echo "📁 Migration artifacts have been uploaded for your records."

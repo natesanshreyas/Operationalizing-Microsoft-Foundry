@@ -1,0 +1,113 @@
+name: Promote Dev to QA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DEV_ENDPOINT: https://YOUR-DEV-RESOURCE.cognitiveservices.azure.com
+  QA_ENDPOINT: https://YOUR-TEST-RESOURCE.cognitiveservices.azure.com
+  DEV_PROJECT: agent-dev-project
+  QA_PROJECT: agent-test-project
+
+jobs:
+  evaluate-dev:
+    name: Run Evaluations on Dev
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2/foundry-pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --pre -r requirements.txt
+
+      - name: Run evaluations against Dev
+        run: python scripts/run_evaluation.py --env dev
+        env:
+          AZURE_ENDPOINT: ${{ env.DEV_ENDPOINT }}
+          AZURE_PROJECT: ${{ env.DEV_PROJECT }}
+
+      - name: Check evaluation thresholds
+        run: python scripts/check_eval_threshold.py --results eval_results.json --threshold 0.8
+
+      - name: Upload eval results as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-dev
+          path: v2/foundry-pipeline/eval_results.json
+
+  deploy-to-qa:
+    name: Deploy to QA
+    runs-on: ubuntu-latest
+    needs: evaluate-dev
+    defaults:
+      run:
+        working-directory: v2/foundry-pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --pre -r requirements.txt "azure-ai-projects>=2.0.0b4" openai
+
+      - name: Provision FoundryIQ infrastructure (idempotent)
+        run: bash scripts/provision_foundryiq_infra.sh --env qa
+
+      - name: Setup FoundryIQ knowledge source & base (idempotent)
+        run: python scripts/setup_foundryiq.py --env qa
+
+      - name: Deploy agent to QA
+        run: python scripts/deploy_agent.py --env qa
+        env:
+          AZURE_ENDPOINT: ${{ env.QA_ENDPOINT }}
+          AZURE_PROJECT: ${{ env.QA_PROJECT }}
+
+      - name: Run smoke test on QA
+        run: python scripts/run_evaluation.py --env qa --smoke-test
+        env:
+          AZURE_ENDPOINT: ${{ env.QA_ENDPOINT }}
+          AZURE_PROJECT: ${{ env.QA_PROJECT }}
+
+      - name: Check QA evaluation thresholds (stricter)
+        run: python scripts/check_eval_threshold.py --results eval_results.json --threshold 0.9
+
+      - name: Upload QA smoke test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-qa
+          path: v2/foundry-pipeline/eval_results.json
+
+      - name: Notify on success
+        if: success()
+        run: echo "::notice::Successfully promoted to QA"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "::error::Promotion to QA failed - check eval results"

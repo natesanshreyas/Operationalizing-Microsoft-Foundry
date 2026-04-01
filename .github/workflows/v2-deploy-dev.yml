@@ -1,0 +1,85 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  DEV_ENDPOINT: https://YOUR-DEV-RESOURCE.cognitiveservices.azure.com
+  DEV_PROJECT: agent-dev-project
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-dev:
+    name: Deploy Agent to Dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install "azure-ai-projects>=2.0.0b4" azure-identity openai requests
+
+      - name: Provision FoundryIQ infrastructure (idempotent)
+        run: bash v2/foundry-pipeline/scripts/provision_foundryiq_infra.sh --env dev
+
+      - name: Setup FoundryIQ knowledge source & base (idempotent)
+        run: python v2/foundry-pipeline/scripts/setup_foundryiq.py --env dev
+
+      - name: Deploy agent to Dev
+        run: python v2/foundry-pipeline/scripts/deploy_agent.py --env dev
+        env:
+          AZURE_ENDPOINT: ${{ env.DEV_ENDPOINT }}
+          AZURE_PROJECT: ${{ env.DEV_PROJECT }}
+
+  run-evaluations:
+    name: Run Safety Evaluations
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r v2/foundry-pipeline/requirements.txt
+
+      - name: Run evaluations
+        run: python v2/foundry-pipeline/scripts/run_evaluation.py --env dev
+        env:
+          AZURE_ENDPOINT: ${{ env.DEV_ENDPOINT }}
+          AZURE_PROJECT: ${{ env.DEV_PROJECT }}
+
+      - name: Notify evaluation passed
+        if: success()
+        run: echo "::notice::Safety evaluations PASSED for Dev deployment"
+
+      - name: Notify evaluation failed
+        if: failure()
+        run: echo "::error::Safety evaluations FAILED for Dev deployment"

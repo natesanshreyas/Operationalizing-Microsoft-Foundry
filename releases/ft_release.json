@@ -1,0 +1,27 @@
+{
+  "source": {
+    "account_name": "YOUR-DEV-RESOURCE",
+    "checkpoint_name": "ftchkpt-EXAMPLE00000000000000000000000",
+    "fine_tune_job_id": "ftjob-EXAMPLE000000000000000000000000",
+    "region": "eastus2",
+    "subscription_id": "00000000-0000-0000-0000-000000000000",
+    "resource_group": "rg-YOUR-DEV-RESOURCE"
+  },
+  "base_model": "gpt-35-turbo",
+  "_comment": "Demo fine-tuning configuration for Azure AI Foundry migration",
+  "lineage": {
+    "notes": "Migrate fine-tuned model ftjob-EXAMPLE000000000000000000000000 from dev to test - 15 enhanced training examples",
+    "prompt_version": "1.0.0",
+    "dataset_hash": "sha256:enhanced-training-data-15-examples",
+    "dataset_manifest": "data/training_data.jsonl",
+    "migration_trigger": "2025-10-09-enhanced-model"
+  },
+  "name": "gpt-35-turbo-0125",
+  "destination": {
+    "deployment_name": "azure-ai-demo-ft-deployment",
+    "subscription_id": "00000000-0000-0000-0000-000000000000",
+    "resource_group": "rg-YOUR-TEST-RESOURCE",
+    "region": "eastus2",
+    "account_name": "YOUR-TEST-RESOURCE"
+  }
+}

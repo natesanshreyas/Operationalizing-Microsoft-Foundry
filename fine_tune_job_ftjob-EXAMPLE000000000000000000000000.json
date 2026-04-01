@@ -1,0 +1,10 @@
+{
+  "job_id": "ftjob-EXAMPLE000000000000000000000000",
+  "endpoint": "https://YOUR-DEV-RESOURCE.openai.azure.com/openai",
+  "model": "gpt-35-turbo-0125",
+  "base_model": "gpt-35-turbo",
+  "created_at": 1760048301,
+  "resource_name": "YOUR-DEV-RESOURCE",
+  "suffix": "azure-demo",
+  "status": "pending"
+}

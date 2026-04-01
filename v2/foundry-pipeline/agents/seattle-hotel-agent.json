@@ -1,0 +1,28 @@
+{
+  "name": "seattle-hotel-agent",
+  "description": "A travel assistant agent specializing in Seattle hotel recommendations.",
+  "model": "gpt-5-2",
+  "instructions": "You are a helpful travel assistant specializing in finding hotels in Seattle, Washington.\n\nWhen a user asks about hotels in Seattle:\n1. Ask for their check-in and check-out dates if not provided\n2. Ask about their budget preferences if not mentioned\n3. Use the get_available_hotels tool to find available options\n4. Present the results in a friendly, informative way\n5. Offer to help with additional questions about the hotels or Seattle\n\nBe conversational and helpful. If users ask about things outside of Seattle hotels, politely let them know you specialize in Seattle hotel recommendations.",
+  "tools": [
+    {
+      "type": "function",
+      "name": "get_available_hotels",
+      "description": "Retrieve available hotels in Seattle based on filters",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "checkin_date": { "type": "string", "description": "Check-in date in YYYY-MM-DD format" },
+          "checkout_date": { "type": "string", "description": "Check-out date in YYYY-MM-DD format" },
+          "budget": { "type": "string", "enum": ["budget", "mid-range", "luxury"], "description": "Budget preference" },
+          "location": { "type": "string", "description": "Neighborhood or area in Seattle" }
+        },
+        "required": ["checkin_date", "checkout_date"]
+      }
+    }
+  ],
+  "model_params": {
+    "max_completion_tokens": 800,
+    "temperature": 0.7,
+    "top_p": 0.95
+  }
+}

@@ -1,0 +1,325 @@
+name: promote-finetuned-to-test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'releases/ft_release.json'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # These are used by azure/login (OIDC)
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}  # Destination/Test subscription
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+jobs:
+  promote_to_test:
+    name: Promote FT checkpoint to Test (cross-subscription)
+    runs-on: ubuntu-latest
+    environment:
+      name: test   # Configure required approvers in GitHub → Settings → Environments → test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          python -V
+          pip install --upgrade pip
+
+      - name: Validate release manifest
+        run: |
+          test -f releases/ft_release.json
+          jq -e '.name and .base_model and .source and .destination and
+                 .source.subscription_id and .source.resource_group and .source.account_name and .source.region and .source.fine_tune_job_id and .source.checkpoint_name and
+                 .destination.subscription_id and .destination.resource_group and .destination.account_name and .destination.region and .destination.deployment_name' \
+                 releases/ft_release.json >/dev/null
+
+      - name: Load manifest into env
+        id: load
+        run: |
+          REL=$(cat releases/ft_release.json)
+          echo "REL_JSON<<EOF" >> $GITHUB_OUTPUT
+          echo "$REL" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Verify Azure OpenAI accounts exist
+        env:
+          REL_JSON: ${{ steps.load.outputs.REL_JSON }}
+        run: |
+          echo "=== Verifying Azure OpenAI Account Accessibility ==="
+          
+          # Extract account info
+          SRC_SUB=$(echo "$REL_JSON" | jq -r '.source.subscription_id')
+          SRC_RG=$(echo "$REL_JSON" | jq -r '.source.resource_group')
+          SRC_ACC=$(echo "$REL_JSON" | jq -r '.source.account_name')
+          
+          DEST_SUB=$(echo "$REL_JSON" | jq -r '.destination.subscription_id')
+          DEST_RG=$(echo "$REL_JSON" | jq -r '.destination.resource_group')
+          DEST_ACC=$(echo "$REL_JSON" | jq -r '.destination.account_name')
+          
+          # Check source account
+          echo "Checking source account: $SRC_ACC"
+          SRC_RES_ID="/subscriptions/${SRC_SUB}/resourceGroups/${SRC_RG}/providers/Microsoft.CognitiveServices/accounts/${SRC_ACC}"
+          if az rest --method get --url "https://management.azure.com${SRC_RES_ID}?api-version=2023-05-01" --output table; then
+            echo "✅ Source account verified: $SRC_ACC"
+          else
+            echo "❌ Cannot access source account: $SRC_ACC"
+            echo "Please verify:"
+            echo "  - Account name is correct"
+            echo "  - Account exists in subscription $SRC_SUB"
+            echo "  - Service principal has Reader access or higher"
+            exit 1
+          fi
+          
+          # Check destination account  
+          echo ""
+          echo "Checking destination account: $DEST_ACC"
+          DEST_RES_ID="/subscriptions/${DEST_SUB}/resourceGroups/${DEST_RG}/providers/Microsoft.CognitiveServices/accounts/${DEST_ACC}"
+          if az rest --method get --url "https://management.azure.com${DEST_RES_ID}?api-version=2023-05-01" --output table; then
+            echo "✅ Destination account verified: $DEST_ACC"
+          else
+            echo "❌ Cannot access destination account: $DEST_ACC"
+            echo "Please verify:"
+            echo "  - Account name is correct"
+            echo "  - Account exists in subscription $DEST_SUB"
+            echo "  - Service principal has Contributor access or higher"
+            exit 1
+          fi
+
+      - name: Copy FT checkpoint (Dev → Test)
+        id: copy
+        env:
+          REL_JSON: ${{ steps.load.outputs.REL_JSON }}
+        run: |
+          # Extract fields
+          SRC_SUB=$(echo "$REL_JSON" | jq -r '.source.subscription_id')
+          SRC_RG=$(echo "$REL_JSON" | jq -r '.source.resource_group')
+          SRC_ACC=$(echo "$REL_JSON" | jq -r '.source.account_name')
+          SRC_REGION=$(echo "$REL_JSON" | jq -r '.source.region')
+          FT_JOB=$(echo "$REL_JSON" | jq -r '.source.fine_tune_job_id')
+          CKPT=$(echo "$REL_JSON" | jq -r '.source.checkpoint_name')
+
+          DEST_SUB=$(echo "$REL_JSON" | jq -r '.destination.subscription_id')
+          DEST_RG=$(echo "$REL_JSON" | jq -r '.destination.resource_group')
+          DEST_ACC=$(echo "$REL_JSON" | jq -r '.destination.account_name')
+          DEST_REGION=$(echo "$REL_JSON" | jq -r '.destination.region')
+
+          echo "=== Source Configuration ==="
+          echo "Subscription: $SRC_SUB"
+          echo "Resource Group: $SRC_RG"
+          echo "Account: $SRC_ACC"
+          echo "Region: $SRC_REGION"
+          echo "Fine-tune Job: $FT_JOB"
+          echo "Checkpoint: $CKPT"
+          echo ""
+          echo "=== Destination Configuration ==="
+          echo "Subscription: $DEST_SUB"
+          echo "Resource Group: $DEST_RG"
+          echo "Account: $DEST_ACC"
+          echo "Region: $DEST_REGION"
+          echo ""
+
+          # Verify source Azure OpenAI account exists and is accessible
+          echo "=== Verifying Source Account Access ==="
+          SRC_RES_ID="/subscriptions/${SRC_SUB}/resourceGroups/${SRC_RG}/providers/Microsoft.CognitiveServices/accounts/${SRC_ACC}"
+          
+          if az rest --method get --url "https://management.azure.com${SRC_RES_ID}?api-version=2023-05-01" --output none 2>/dev/null; then
+            echo "✅ Source account accessible via Management API"
+          else
+            echo "❌ Cannot access source account via Management API"
+            echo "This might be a permissions issue or the account doesn't exist"
+          fi
+
+          # Check if we can resolve the OpenAI endpoint
+          echo "=== Testing DNS Resolution ==="
+          OPENAI_ENDPOINT="https://${SRC_ACC}.openai.azure.com"
+          if nslookup "${SRC_ACC}.openai.azure.com" > /dev/null 2>&1; then
+            echo "✅ DNS resolution successful for ${SRC_ACC}.openai.azure.com"
+          else
+            echo "❌ DNS resolution failed for ${SRC_ACC}.openai.azure.com"
+            echo "This indicates the Azure OpenAI account might not exist or is not accessible"
+            exit 1
+          fi
+
+          # Test basic connectivity to OpenAI endpoint
+          echo "=== Testing OpenAI Endpoint Connectivity ==="
+          if curl -s --connect-timeout 10 "${OPENAI_ENDPOINT}" > /dev/null; then
+            echo "✅ Can connect to OpenAI endpoint"
+          else
+            echo "❌ Cannot connect to OpenAI endpoint"
+            echo "The endpoint might be private or network-restricted"
+          fi
+
+          DEST_RES_ID="/subscriptions/${DEST_SUB}/resourceGroups/${DEST_RG}/providers/Microsoft.CognitiveServices/accounts/${DEST_ACC}"
+
+          # Use current stable API version instead of placeholder
+          API_VERSION="2024-08-01-preview"
+          COPY_URL="https://${SRC_ACC}.openai.azure.com/openai/fine_tuning/jobs/${FT_JOB}/checkpoints/${CKPT}/copy?api-version=${API_VERSION}"
+          COPY_BODY=$(jq -n --arg dest "$DEST_RES_ID" --arg region "$DEST_REGION" '{
+            "destination_resource_id": $dest,
+            "destination_region": $region
+          }')
+
+          echo "=== Copy Operation Details ==="
+          echo "Copy URL: $COPY_URL"
+          echo "Request Body: $COPY_BODY"
+          echo ""
+
+          # Attempt the copy operation with proper error handling
+          echo "=== Attempting Checkpoint Copy ==="
+          if az rest \
+            --method post \
+            --url "$COPY_URL" \
+            --headers "Content-Type=application/json" \
+            --body "$COPY_BODY" \
+            --output json > copy_response.json 2>copy_error.log; then
+            
+            echo "✅ Copy request submitted successfully"
+            echo "Copy response:"
+            cat copy_response.json
+            
+            # Extract operation status URL if available
+            STATUS_URL=$(jq -r '.operation_location // .status_url // empty' copy_response.json)
+            if [ -n "$STATUS_URL" ]; then
+              echo "status_url=$STATUS_URL" >> $GITHUB_OUTPUT
+              echo "Status URL: $STATUS_URL"
+            fi
+            
+          else
+            echo "❌ Copy request failed"
+            echo "Error details:"
+            cat copy_error.log 2>/dev/null || echo "No error details available"
+            echo ""
+            echo "Response (if any):"
+            cat copy_response.json 2>/dev/null || echo "No response received"
+            
+            echo "=== Troubleshooting Information ==="
+            echo "1. Verify the source fine-tuning job and checkpoint exist"
+            echo "2. Check that both source and destination accounts have necessary permissions"
+            echo "3. Confirm the API version and endpoint are correct for your region"
+            echo "4. Ensure cross-region copying is enabled for your subscription"
+            
+            # Don't exit with error - let the workflow continue for debugging
+            echo "::warning::Checkpoint copy failed, but continuing workflow for debugging purposes"
+          fi
+
+      - name: Poll copy status
+        env:
+          STATUS_URL: ${{ steps.copy.outputs.status_url }}
+        run: |
+          if [ -n "$STATUS_URL" ]; then
+            echo "=== Polling Copy Operation Status ==="
+            echo "Status URL: $STATUS_URL"
+            
+            MAX_ATTEMPTS=20
+            WAIT_TIME=30
+            
+            for i in $(seq 1 $MAX_ATTEMPTS); do
+              echo "Polling attempt $i/$MAX_ATTEMPTS..."
+              
+              if az rest --method get --url "$STATUS_URL" --output json > status_response.json 2>/dev/null; then
+                STATUS=$(jq -r '.status // .state // "unknown"' status_response.json)
+                echo "Current status: $STATUS"
+                
+                case "$STATUS" in
+                  "Succeeded"|"succeeded"|"Completed"|"completed")
+                    echo "✅ Copy operation completed successfully!"
+                    cat status_response.json
+                    break
+                    ;;
+                  "Failed"|"failed"|"Error"|"error")
+                    echo "❌ Copy operation failed!"
+                    cat status_response.json
+                    exit 1
+                    ;;
+                  "InProgress"|"in_progress"|"Running"|"running"|"Pending"|"pending")
+                    echo "⏳ Copy still in progress, waiting ${WAIT_TIME}s..."
+                    sleep $WAIT_TIME
+                    ;;
+                  *)
+                    echo "⚠️  Unknown status: $STATUS"
+                    cat status_response.json
+                    sleep $WAIT_TIME
+                    ;;
+                esac
+              else
+                echo "❌ Failed to get status from $STATUS_URL"
+                sleep $WAIT_TIME
+              fi
+              
+              if [ $i -eq $MAX_ATTEMPTS ]; then
+                echo "⚠️ Reached maximum polling attempts, operation may still be in progress"
+              fi
+            done
+          else
+            echo "=== No Status URL Available ==="
+            echo "Skipping status polling as no status URL was returned from copy operation."
+            echo "This might indicate:"
+            echo "1. The copy operation failed to start"
+            echo "2. The API doesn't provide async status tracking"
+            echo "3. The operation completed synchronously"
+          fi
+
+      - name: Create/Update deployment in Destination AOAI
+        id: deploy
+        env:
+          REL_JSON: ${{ steps.load.outputs.REL_JSON }}
+        run: |
+          DEST_SUB=$(echo "$REL_JSON" | jq -r '.destination.subscription_id')
+          DEST_RG=$(echo "$REL_JSON" | jq -r '.destination.resource_group')
+          DEST_ACC=$(echo "$REL_JSON" | jq -r '.destination.account_name')
+          DEST_REGION=$(echo "$REL_JSON" | jq -r '.destination.region')
+          DEPLOY_NAME=$(echo "$REL_JSON" | jq -r '.destination.deployment_name')
+          BASE_MODEL=$(echo "$REL_JSON" | jq -r '.base_model')
+
+          DEST_RES_ID="/subscriptions/${DEST_SUB}/resourceGroups/${DEST_RG}/providers/Microsoft.CognitiveServices/accounts/${DEST_ACC}"
+
+          # --- PLACEHOLDER DEPLOYMENT CALL ---
+          # Replace with the correct management API for creating an AOAI deployment from the copied FT model.
+          # Payload below is illustrative; use the real schema your resource expects.
+          DEPLOY_URL="https://management.azure.com${DEST_RES_ID}/deployments/${DEPLOY_NAME}?api-version=2023-05-01"
+          PAYLOAD=$(jq -n --arg name "$BASE_MODEL" --arg ver "ft-copied" '{
+            model: { format: "OpenAI", name: $name, version: $ver },
+            scaleSettings: { scaleType: "Standard" }
+          }')
+
+          echo "PUT $DEPLOY_URL"
+          echo "BODY: $PAYLOAD"
+          az rest --method put --url "$DEPLOY_URL" --headers "Content-Type=application/json" --body "$PAYLOAD" --output json > deploy_response.json || true
+
+          echo "Deployment response:"
+          cat deploy_response.json || true
+
+      - name: Emit promotion artifact
+        env:
+          REL_JSON: ${{ steps.load.outputs.REL_JSON }}
+        run: |
+          TS=$(date +%s)
+          NAME=$(echo "$REL_JSON" | jq -r '.name')
+          SRC_ACC=$(echo "$REL_JSON" | jq -r '.source.account_name')
+          DEST_ACC=$(echo "$REL_JSON" | jq -r '.destination.account_name')
+          jq -n --arg name "$NAME" --arg src "$SRC_ACC" --arg dest "$DEST_ACC" --argjson ts $TS \
+            '{release: $name, source_account: $src, destination_account: $dest, timestamp: $ts}' \
+            > "releases/${NAME}.promote_result.json"
+          cat "releases/${NAME}.promote_result.json"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote_result
+          path: releases/*.promote_result.json

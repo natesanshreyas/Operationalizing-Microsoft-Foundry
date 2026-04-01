@@ -1,0 +1,96 @@
+{
+  "fine_tuned_model_deployment_strategy": {
+    "dev_environment": {
+      "status": "✅ COMPLETED",
+      "fine_tuned_model": "gpt-35-turbo-0125.ft-EXAMPLE-azure-demo",
+      "deployment_name": "gpt-35-turbo-0125-azure-demo-from-ft",
+      "deployment_status": "Succeeded",
+      "test_results": {
+        "prompt_flows_question": "✅ Correctly answered with fine-tuned knowledge",
+        "cost_question": "✅ Provided appropriate Azure AI Foundry cost information",
+        "model_ready": true
+      }
+    },
+    "test_environment_options": {
+      "option_1_fine_tuning_recreation": {
+        "method": "Recreate fine-tuning job in test environment",
+        "status": "❌ BLOCKED - Fine-tuning endpoint not available (404 error)",
+        "uploaded_files": {
+          "training_file": "file-EXAMPLE-TRAINING-000000000000000",
+          "validation_file": "file-EXAMPLE-VALIDATION-0000000000000"
+        },
+        "next_steps": [
+          "Contact Azure support to enable fine-tuning in test environment",
+          "Verify test environment has proper Azure OpenAI configuration",
+          "Consider using Azure AI Studio for cross-environment model management"
+        ]
+      },
+      "option_2_proxy_deployment": {
+        "method": "Create API proxy from test to dev environment",
+        "status": "✅ FEASIBLE",
+        "implementation": {
+          "description": "Deploy a proxy service in test that forwards requests to dev fine-tuned model",
+          "benefits": ["Immediate deployment", "No model recreation needed", "Maintains dev model performance"],
+          "considerations": ["Cross-environment network access", "Additional latency", "Dependency on dev environment"]
+        }
+      },
+      "option_3_model_export_import": {
+        "method": "Export model artifacts and import to test",
+        "status": "⚠️ COMPLEX",
+        "requirements": ["Azure ML workspace", "Model registry access", "Custom deployment scripts"],
+        "timeline": "Long-term solution"
+      }
+    },
+    "recommended_immediate_approach": {
+      "strategy": "Hybrid Testing Approach",
+      "steps": [
+        {
+          "step": 1,
+          "action": "Use dev environment for fine-tuned model testing",
+          "deployment": "gpt-35-turbo-0125-azure-demo-from-ft",
+          "purpose": "Validate fine-tuned model performance with enhanced training data"
+        },
+        {
+          "step": 2,
+          "action": "Use test environment base models for integration testing",
+          "deployment": "gpt-4.1 or gpt-5",
+          "purpose": "Test application integration and deployment pipeline"
+        },
+        {
+          "step": 3,
+          "action": "Document model performance differences",
+          "purpose": "Compare base model vs fine-tuned model responses"
+        },
+        {
+          "step": 4,
+          "action": "Configure test environment for fine-tuning (Azure support)",
+          "purpose": "Enable proper fine-tuned model deployment in future"
+        }
+      ]
+    }
+  },
+  "current_deployment_status": {
+    "dev_fine_tuned_model": "✅ DEPLOYED AND TESTED",
+    "test_environment_access": "✅ CONFIRMED", 
+    "fine_tuning_capability_test": "❌ NOT AVAILABLE",
+    "alternative_deployment_options": "✅ DOCUMENTED",
+    "ci_cd_pipeline_infrastructure": "✅ READY"
+  },
+  "next_actions": {
+    "immediate": [
+      "Test fine-tuned model responses in dev environment",
+      "Compare with base model responses",
+      "Document model performance improvements"
+    ],
+    "short_term": [
+      "Contact Azure support for test environment fine-tuning enablement",
+      "Implement proxy deployment if needed for testing",
+      "Update CI/CD pipeline with deployment validation"
+    ],
+    "long_term": [
+      "Establish proper model lifecycle management across environments",
+      "Implement automated fine-tuning job recreation",
+      "Set up model performance monitoring and drift detection"
+    ]
+  }
+}

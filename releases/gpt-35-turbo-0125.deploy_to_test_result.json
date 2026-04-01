@@ -1,0 +1,69 @@
+{
+  "deployment_strategy": "fine_tuning_recreation",
+  "status": "ready_for_manual_deployment",
+  "source_model": {
+    "environment": "dev",
+    "model_id": "gpt-35-turbo-0125.ft-EXAMPLE-azure-demo",
+    "fine_tune_job_id": "ftjob-EXAMPLE000000000000000000000000",
+    "base_model": "gpt-35-turbo-0125",
+    "status": "succeeded",
+    "training_examples": 15,
+    "validation_examples": 2,
+    "resource": "YOUR-DEV-RESOURCE"
+  },
+  "target_environment": {
+    "environment": "test",
+    "resource": "YOUR-TEST-RESOURCE",
+    "resource_group": "rg-YOUR-TEST-RESOURCE",
+    "subscription_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "deployment_steps": {
+    "files_uploaded": {
+      "training_file": "file-EXAMPLE-TRAINING-000000000000000",
+      "validation_file": "file-EXAMPLE-VALIDATION-0000000000000",
+      "status": "completed",
+      "timestamp": "2025-10-10T08:42:51Z"
+    },
+    "fine_tuning_job": {
+      "status": "blocked",
+      "reason": "Fine-tuning endpoint not available in test environment (404 error)",
+      "recommendation": "Configure test environment for fine-tuning or use alternative deployment method"
+    },
+    "alternative_deployment_options": [
+      {
+        "method": "model_export_import",
+        "description": "Export the fine-tuned model from dev and import to test (requires Azure ML)",
+        "feasibility": "possible_with_additional_setup"
+      },
+      {
+        "method": "inference_endpoint_proxy",
+        "description": "Create inference endpoint in test that proxies to dev model",
+        "feasibility": "immediate"
+      },
+      {
+        "method": "environment_configuration",
+        "description": "Enable fine-tuning capabilities in test environment",
+        "feasibility": "requires_azure_support_setup"
+      }
+    ]
+  },
+  "validation": {
+    "test_environment_models_available": true,
+    "base_models_compatible": true,
+    "training_data_format": "valid",
+    "authentication": "successful"
+  },
+  "recommendations": {
+    "immediate": "Use dev environment model for testing until test environment is configured for fine-tuning",
+    "short_term": "Configure test environment Azure OpenAI resource for fine-tuning operations",
+    "long_term": "Implement proper model lifecycle management with Azure ML pipelines"
+  },
+  "migration_timestamp": "2025-10-10T08:45:00Z",
+  "migration_trigger": "manual_deployment_process",
+  "next_actions": [
+    "Verify test environment fine-tuning configuration",
+    "Contact Azure support for test environment setup if needed", 
+    "Consider using dev model directly for testing purposes",
+    "Document deployment process for future reference"
+  ]
+}

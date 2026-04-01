@@ -1,0 +1,55 @@
+{
+  "environments": {
+    "dev": {
+      "ai_foundry_resource_name": "YOUR-DEV-RESOURCE",
+      "resource_group": "rg-YOUR-DEV-RESOURCE",
+      "endpoint": "https://YOUR-DEV-RESOURCE.openai.azure.com/openai",
+      "subscription_id": "00000000-0000-0000-0000-000000000000",
+      "region": "eastus2",
+      "model_deployment": "gpt-5",
+      "cognitive_services_account": "YOUR-DEV-RESOURCE",
+      "cognitive_services_rg": "rg-YOUR-DEV-RESOURCE",
+      "project_name": "agent-dev-project"
+    },
+    "test": {
+      "ai_foundry_resource_name": "YOUR-TEST-RESOURCE",
+      "resource_group": "rg-YOUR-TEST-RESOURCE",
+      "endpoint": "https://YOUR-TEST-RESOURCE.openai.azure.com/openai", 
+      "subscription_id": "00000000-0000-0000-0000-000000000000",
+      "region": "eastus2",
+      "model_deployment": "gpt-5",
+      "cognitive_services_account": "YOUR-TEST-RESOURCE",
+      "cognitive_services_rg": "rg-YOUR-TEST-RESOURCE",
+      "project_name": "agent-test-project"
+    },
+    "prod": {
+      "ai_foundry_resource_name": "YOUR-PROD-RESOURCE",
+      "resource_group": "rg-YOUR-PROD-RESOURCE",
+      "endpoint": "https://YOUR-PROD-RESOURCE.openai.azure.com/openai",
+      "subscription_id": "00000000-0000-0000-0000-000000000000", 
+      "region": "eastus2",
+      "model_deployment": "gpt-5",
+      "cognitive_services_account": "YOUR-PROD-RESOURCE",
+      "cognitive_services_rg": "rg-YOUR-PROD-RESOURCE"
+    }
+  },
+  "migration_settings": {
+    "preserve_conversation_history": false,
+    "migrate_file_attachments": true,
+    "validate_model_compatibility": true,
+    "timeout_seconds": 300,
+    "retry_attempts": 3
+  },
+  "validation_tests": [
+    {
+      "name": "basic_response_test",
+      "message": "Hello! This is a test message to verify the migrated agent is working correctly.",
+      "expected_response_type": "text"
+    },
+    {
+      "name": "tool_availability_test",
+      "message": "What tools do you have available?",
+      "expected_response_type": "text"
+    }
+  ]
+}

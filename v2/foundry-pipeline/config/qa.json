@@ -1,0 +1,9 @@
+{
+  "environment": "qa",
+  "endpoint": "https://YOUR-TEST-RESOURCE.services.ai.azure.com/api/projects/agent-test-project",
+  "subscription_id": "<YOUR_SUBSCRIPTION_ID>",
+  "resource_group_name": "<YOUR_RESOURCE_GROUP>",
+  "project_name": "agent-test-project",
+  "model_deployment": "gpt-5",
+  "agent_name": "seattle-hotel-agent"
+}

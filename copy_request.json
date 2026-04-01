@@ -1,0 +1,4 @@
+{
+  "destinationResourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-YOUR-DEMO-RG-2/providers/Microsoft.CognitiveServices/accounts/ai-foundry-project-west-resource",
+  "region": "westus"
+}
