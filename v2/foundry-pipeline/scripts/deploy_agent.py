@@ -27,12 +27,12 @@ from azure.identity import DefaultAzureCredential
 
 CONFIGS = {
     "dev": {
-        "endpoint": "https://YOUR-DEV-RESOURCE.services.ai.azure.com/api/projects/agent-dev-project",
-        "model_deployment": "gpt-5",
+        "endpoint": "https://externalfoundry.services.ai.azure.com/api/projects/dev",
+        "model_deployment": "gpt-4.1",
     },
     "qa": {
-        "endpoint": "https://YOUR-TEST-RESOURCE.services.ai.azure.com/api/projects/agent-test-project",
-        "model_deployment": "gpt-5",
+        "endpoint": "https://externalfoundry.services.ai.azure.com/api/projects/test",
+        "model_deployment": "gpt-4.1",
     },
 }
 

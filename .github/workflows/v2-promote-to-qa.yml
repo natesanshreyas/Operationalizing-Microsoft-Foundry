@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
 
 env:
-  DEV_ENDPOINT: https://YOUR-DEV-RESOURCE.cognitiveservices.azure.com
-  QA_ENDPOINT: https://YOUR-TEST-RESOURCE.cognitiveservices.azure.com
-  DEV_PROJECT: agent-dev-project
-  QA_PROJECT: agent-test-project
+  DEV_ENDPOINT: https://externalfoundry.services.ai.azure.com/api/projects/dev
+  QA_ENDPOINT: https://externalfoundry.services.ai.azure.com/api/projects/test
+  DEV_PROJECT: dev
+  QA_PROJECT: test
 
 permissions:
   id-token: write
@@ -77,6 +77,8 @@ jobs:
 
       - name: Provision FoundryIQ infrastructure (idempotent)
         run: bash v2/foundry-pipeline/scripts/provision_foundryiq_infra.sh --env qa
+        env:
+          AZURE_CLIENT_OBJECT_ID: ${{ secrets.AZURE_CLIENT_OBJECT_ID }}
 
       - name: Setup FoundryIQ knowledge source & base (idempotent)
         run: python v2/foundry-pipeline/scripts/setup_foundryiq.py --env qa

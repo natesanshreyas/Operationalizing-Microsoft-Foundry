@@ -36,24 +36,24 @@ if [[ -z "$ENV" ]]; then
 fi
 
 # ── Environment configuration ──────────────────────────────────────────────
-SUBSCRIPTION="00000000-0000-0000-0000-000000000000"
+SUBSCRIPTION="68837237-5a48-41a9-bed4-947f5c277684"
 
 case "$ENV" in
   dev)
-    RG="rg-YOUR-DEV-RESOURCE"
-    FOUNDRY_ACCOUNT="YOUR-DEV-RESOURCE"
-    PROJECT_NAME="agent-dev-project"
-    SEARCH_SERVICE="your-ai-search-dev"
-    STORAGE_ACCOUNT="yourstorageaccountdev"
-    LOCATION="eastus2"
+    RG="default-activitylogalerts"
+    FOUNDRY_ACCOUNT="ExternalFoundry"
+    PROJECT_NAME="dev"
+    SEARCH_SERVICE="shreyassearch"
+    STORAGE_ACCOUNT="shreyasblob"
+    LOCATION="eastus"
     ;;
   qa)
-    RG="rg-YOUR-TEST-RESOURCE"
-    FOUNDRY_ACCOUNT="YOUR-TEST-RESOURCE"
-    PROJECT_NAME="agent-test-project"
-    SEARCH_SERVICE="your-ai-search-test"
-    STORAGE_ACCOUNT="yourstorageaccounttest"
-    LOCATION="eastus2"
+    RG="default-activitylogalerts"
+    FOUNDRY_ACCOUNT="ExternalFoundry"
+    PROJECT_NAME="test"
+    SEARCH_SERVICE="shreyassearch"
+    STORAGE_ACCOUNT="shreyasblob"
+    LOCATION="eastus"
     ;;
   *)
     echo "::error::Unknown environment '$ENV'. Use 'dev' or 'qa'."

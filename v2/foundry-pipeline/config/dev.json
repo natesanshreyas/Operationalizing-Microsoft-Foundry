@@ -1,9 +1,9 @@
 {
   "environment": "dev",
-  "endpoint": "https://YOUR-DEV-RESOURCE.services.ai.azure.com/api/projects/agent-dev-project",
-  "subscription_id": "00000000-0000-0000-0000-000000000000",
-  "resource_group_name": "rg-YOUR-DEV-RESOURCE",
-  "project_name": "agent-dev-project",
-  "model_deployment": "gpt-5",
-  "agent_name": "seattle-hotel-agent-gpt-5"
+  "endpoint": "https://externalfoundry.services.ai.azure.com/api/projects/dev",
+  "subscription_id": "68837237-5a48-41a9-bed4-947f5c277684",
+  "resource_group_name": "default-activitylogalerts",
+  "project_name": "dev",
+  "model_deployment": "gpt-4.1",
+  "agent_name": "seattle-hotel-agent"
 }

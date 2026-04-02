@@ -56,43 +56,43 @@ SEARCH_API_VERSION = "2025-11-01-preview"
 # ── Environment configs ─────────────────────────────────────────────────────
 CONFIGS = {
     "dev": {
-        "subscription_id": "00000000-0000-0000-0000-000000000000",
-        "resource_group": "rg-YOUR-DEV-RESOURCE",
+        "subscription_id": "68837237-5a48-41a9-bed4-947f5c277684",
+        "resource_group": "default-activitylogalerts",
         # Foundry (AIServices) account
-        "foundry_account_name": "YOUR-DEV-RESOURCE",
-        "foundry_openai_endpoint": "https://YOUR-DEV-RESOURCE.openai.azure.com",
-        "project_name": "agent-dev-project",
+        "foundry_account_name": "ExternalFoundry",
+        "foundry_openai_endpoint": "https://externalfoundry.openai.azure.com",
+        "project_name": "dev",
         # AI Search service
-        "search_service_name": "your-ai-search-dev",
+        "search_service_name": "shreyassearch",
         # Storage account
-        "storage_account_name": "yourstorageaccountdev",
+        "storage_account_name": "shreyasblob",
         "default_container": "sample-grounded-documents",
         # Model deployments
         "embedding_deployment": "text-embedding-3-small",
         "embedding_model": "text-embedding-3-small",
-        "chat_deployment": "gpt-5",
-        "chat_model": "gpt-5",
+        "chat_deployment": "gpt-4.1",
+        "chat_model": "gpt-4.1",
         # Naming
         "knowledge_source_name": "foundryiq-blob-ks-dev",
         "knowledge_base_name": "foundryiq-kb-dev",
     },
     "qa": {
-        "subscription_id": "00000000-0000-0000-0000-000000000000",
-        "resource_group": "rg-YOUR-TEST-RESOURCE",
+        "subscription_id": "68837237-5a48-41a9-bed4-947f5c277684",
+        "resource_group": "default-activitylogalerts",
         # Foundry (AIServices) account
-        "foundry_account_name": "YOUR-TEST-RESOURCE",
-        "foundry_openai_endpoint": "https://YOUR-TEST-RESOURCE.openai.azure.com",
-        "project_name": "agent-test-project",
+        "foundry_account_name": "ExternalFoundry",
+        "foundry_openai_endpoint": "https://externalfoundry.openai.azure.com",
+        "project_name": "test",
         # AI Search service
-        "search_service_name": "your-ai-search-test",
+        "search_service_name": "shreyassearch",
         # Storage account
-        "storage_account_name": "yourstorageaccounttest",
+        "storage_account_name": "shreyasblob",
         "default_container": "sample-grounded-documents",
         # Model deployments
         "embedding_deployment": "text-embedding-3-small",
         "embedding_model": "text-embedding-3-small",
-        "chat_deployment": "gpt-5",
-        "chat_model": "gpt-5",
+        "chat_deployment": "gpt-4.1",
+        "chat_model": "gpt-4.1",
         # Naming
         "knowledge_source_name": "foundryiq-blob-ks-test",
         "knowledge_base_name": "foundryiq-kb-test",
